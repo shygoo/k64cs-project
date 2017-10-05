@@ -1,0 +1,297 @@
+Kirby 64 rough notes
+shygoo 2017
+
+f3dex2
+http://wiki.cloudmodding.com/oot/F3DZEX
+
+-----------------------------
+
+geometry file
+
+header+0x04 is scrolling texture settings
+
+for each struct in the section, there is a jump to segment 0E in the microcode
+
+target grows by 8 for each eg
+
+0E000000, 0E000008, 0E0000010
+
+Segment 0E structure
+
+ 802C97F0: DE010000 802C9828 // G_DL branch 802C9828
+ 802C97F8: DE010000 802C9838 // G_DL branch 802C9838
+ ...
+ 802C9828: F20AC021 001A421D // G_SETTILESIZE <- Coordinates change actively to scroll texture
+ 802C9830: DF000000 00000000 // G_ENDDL
+ 802C9838: F20AC021 001A421D // G_SETTILESIZE <- Coordinates change actively to scroll texture
+ 802C9830: DF000000 00000000 // G_ENDDL
+ 
+ For each list of segptrs to the scroll setting structs,
+ there is a set of branches and g_settilesize instructions
+
+ level 0 has a list of 7 and another list of 14
+ https://i.gyazo.com/77ee78dbb5cf2c5b4173863ba7377a87.png
+ 
+ 
+8036F1B8 scrolling structs
+ 8036F1B8
+ 8036F230
+ 8036F2A8
+ 8036F320
+ 8036F398
+ 
+800CE248 geometry block addresses in ram 
+ 
+-----------------------------
+
+Geo block loading
+800F6E30
+ 800A9864 loadResource(a0 = resource id) // 00070001 = stage model
+  800A9250 loadResource(a0 = resource id)
+   80002E48 (romaddr & size)
+
+ @800A92C4 watch a0 for addresses
+ 
+------------------------------
+
+Entity/camera block loading
+800F78E4
+ 800A9AA8 calculates block size using the offset of the next block
+  80002E48 a0 = address of entity table
+  
+@800A9B2C watch t2 & t3 for bank-offsets
+
+0007003B -> 01D28720 + (0001AD48 : 0001CDA0)
+
+1D43468 : 1D454C0
+
+0007000D 01D28720 00004540 : 0000495C
+
+------------------------------
+Image loading
+800A8BAC
+ 800A8B0C
+  80002E48
+
+  00858740 00000844
+  
+
+000783F4 800D01A4 resource ID for stage 1-1 area 0 sits here (00070001)
+
+-------------------------
+
+Primary level table?
+
+000783F4 800D01A4: structs, 0x24 (36) bytes in size
+
+  800D00A4
+  
+00       04       08   0A   0C       10       14   16
+00070001 00000000 0002 007F 0000000D 0007003B 003C 0000 0007000D 0007000E 800D5E00
+00070002 00000000 0003 007F 00000022 0007003C 003C 000A 0007001F 00070020 800D5E0C
+00070003 00000000 0004 007F 0000000D 0007003D 003C 0000 0007000D 0007000E 800D5E18
+ 
+-------------------
+
+Different bank contexts
+
+800A9AA8 & 800A8B0C are nearly identical
+800A9250
+
+all call 80002E48 to dma
+
+-------------------
+
+
+8012E990 kirby xyz
+
+
+8012E968 u32, float x, float y, float z
+copied from here to kirby xyz
+
+800E2950 z copied from here
+
+
+kirby init pos
+
+800E25d0
+
+
+z pos copied from here 8012E974
+copied from here 801926D4
+
+800E2950
+-----------------------------
+
+Level settings
+
+
+01D43468 802F4A10 State 1-1 area 0 block (0x2058 bytes)
+
+00001268 = 802F5C78
+ 116 bytes?
+00001C50 = 802F6660
+ 00000009 00001BC0 00001AF4 00001B48
+ v
+ 00000009 802F65d0 802F6504 802F6558
+          ^ camera & collision stuff?
+		
+
+		
+  802F65d0:
+   802f55b4 802f5cec 802f64c4 00020000
+ 
+ 
+00001C60 = 802F6670 object positions
+
+
+00001C50:
+ 00000009 number of items
+ 00001BC0 offset to some structs (3 offsets & a number) (9 structs)
+  
+  000015A4 offset of something 144 bytes
+  000012DC offset of something 72 bytes
+  00001AB4 offset of something 8 bytes
+  00020000
+  ...
+   
+ 00001AF4 offset to some bytes
+ 00001B48 offset to some floats (30 of them)
+
+ 12DC
+
+80047510 ptr to current collision?
+
+802F568C first white block
+802F56BC on bridge
+802F577C platform
+802F579C on block
+802F58FC 
+
+collision struct 0x30 bytes?
+
+0x0C: Y
+
+collision struct can be applied to multiple places
+
+---------
+
+Environment particle block
+
+1. Number of particles
+2. Particle offset list
+3. Particle settings
+
+00000009
+
+00000028 00000074 00000104 00000198 00000228 000002B8 00000310 00000378 000003BC
+
+00000000 000000C0 00000000 3F800000 3F800000 00000000 00000000 00000000 00000000 00000000 3D4CCCCD 00000000 00000000 00000000 03D9792C A50001A5 0002A500 03A50004 01FF0000
+00000000 000100C0 00000003 3C23D70A 3F800000 3FC00000 3FE66666 00000000 00000000 00000000 BF800000 41200000 00000000 00000000 03D9792C 4000A844 48000000 00000043 C80000AD A0004100 0000D700 FFFFFFCF 00F0A0D7 C8BA0707 0F002040 A0404140 0000CF40 F0B4EB40 BA07070A 002038A0 6041C800 00CF60FF FFFF00FA 20993CA3 D70A01FB 2028FF00
+00000000 000100C0 00000003 3C23D70A 3F800000 3F99999A 3FF33333 00000000 00000000 00000000 BF800000 41200000 00000000 00000000 03D9792C 4000A844 48000000 00000043 C80000A6 00640080 ADA00041 000000D7 00FFFFFF CF00DCDC 3CC8BA11 11000020 34A02041 400000CF 20F0F0D2 40BA0707 00002030 A04041C8 0000CF40 FFFFFF00 FA14993C F5C28F01 FB04FF00
+00000000 00010080 00000003 3C23D70A 3F800000 3FC00000 40200000 00000000 00000000 00000000 BF800000 41200000 00000000 00000000 03D9792C 4000A844 48000000 00000043 C80000AD A0004100 0000D700 FFFFFFCF 00DC9655 C8BA1134 00002034 A0204140 0000CF20 F0F0B440 BA070700 002030A0 4041C800 00CF4019 FFFF00FA 14993CA3 D70A01FB 08FF30A8
+00000000 000100C0 00000003 3C23D70A 3F800000 3FB33333 3FE00000 3F800000 00000000 00000000 BF800000 41200000 00000000 00000000 03D9792C 4000A844 48000000 00000043 C80000AD A0004100 0000D700 5FDC5FCF 0078C878 C8BA001B 00002040 A0404140 0000CF40 C8F04640 BA000700 002038A0 6041C800 00CF60FF FFFF00FA 20993CA3 D70A01FB 2028FF6A
+00000001 0001001E 00000002 3F800000 3F800000 00000000 41A00000 00000000 00000000 3FC90FDA C1700000 41700000 00000000 00000000 03D9792C 4000A23E 99999AA3 3F59999A AC003F80 000041A0 000014C8 0A000AFF
+00000000 00010014 00000000 3F800000 3F800000 00000000 41000000 3F800000 C1F00000 3F5F66F3 C1A00000 41200000 00000000 00000000 03D9792C 4000ADD7 00FFFFFF CF00FFFF FFA00ABD 40000000 41200000 A23FA000 00A01442 480000B4 C814000A FFC18E71
+00000001 0001001E 00000000 3F800000 3F800000 00000000 00000000 00000000 00000000 00000000 BF800000 41700000 00000000 00000000 03D9792C A50005A5 000601FF
+00000000 00010019 00000000 3F800000 3F800000 00000000 41200000 41F00000 00000000 3FC90FDA C1700000 42480000 00000000 00000000 03D9792C 4000ADD7 00FFFFFF CF00FFFF FF64A23F 0CCCCDA3 3F333333 0AA01442 C80000C8 14000FFF
+
+---------
+
+802F5E5C floats here mess with the collision
+
+----
+
+007DFA70 007E38C0 kirby character geometry block
+6FA94 rom address list
+
+
+___________________
+
+Image address conversion
+
+800A8BAC (A0 = bank_id_pair)
+
+ void* bank_table[] @ 800D0104
+ 
+ int bankno = (bank_id_pair >> 0x10) // upper
+ int id = (bank_id_pair & 0xFFFF) // lower
+ 
+ void* bank[] = bank_table[bankno]
+ void* img_addr = bank[id]
+
+0x01BD5C80 ROM Bank 7?
+0x00076B2C Offset list
+
+01BD5C80 + 00068A0A (image address)
+passed to 80002E48
+
+01BD5C80 + 0010FDAA
+
+00078300: 01BD5C80 ; a reference to bank7 ?
+
+______________________________________________________
+
+fire thing position
+800E6C48
+
+800FC9C0 spawn_entity function
+
+  a0 = ptr
+  a1 = ptr to entity struct
+  a2 = ptr
+  
+  800FCD14
+  
+  a0 = ?
+  a1 = ?
+  a2 = float x_pos
+  
+  802F4A10
+   + 1268 = 802f5c78
+   + 1C50 = 802F6660 more offsets converted to pointers within block?
+      00000009 00001BC0 00001AF4 00001B48 becomes...
+      00000009 802F65D0 802F6504 802F6558 
+   + 1C60 = 802F6670 objects array
+    
+-----------
+
+
+code at 800a9420 converts segptrs to ptrs in geo block
+
+level screen selection
+800E9918
+800E991C
+800E9FE0
+
+level loading related, entity block is in memory after this is called
+800075C0 JAL 0x8000708C ; does not return to pc+8
+800072F0 JALR RA, V1
+ V1 = *(n + 0x88)
+ n = {
+  8015A064 ; game start
+  8015A064 ; into screen
+  8015A064 ; title screen
+  8015AAC4 ; select file screen
+  
+  8015C074 ; planet selection
+  8015A7DC ; stage selection
+  80123F64 ; popstar 1
+  
+  8015AAC4 ; copy ability prompt
+ 
+ 
+800F6600 JAL 0x800F8274
+800F8348 JAL 0x800F78E4
+
+800F793C
+ 800a9aa8 converts offsets to pointers in the entity block
+ 
+ ______________________________________________________
+ Todo
+ 'bank 7' image sizes
+ entity block rom addr references
+ collisions
+ optional sections within geometry blocks
+ need segment 0e for complete rendering
+ 

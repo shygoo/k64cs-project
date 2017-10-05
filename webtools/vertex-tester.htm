@@ -1,0 +1,89 @@
+<html>
+<head>
+<title>N64 Generic Vertex Tester</title>
+<script src="js/three.min.js"></script>
+<script src="js/n64scene.js"></script>
+<style>
+#vertices {
+	display: inline-block;
+	height: 620px;
+	width: 400px;
+}
+
+input[type='text'] {
+	width: 40px;
+}
+</style>
+</head>
+<body>
+<div>
+	<div id="scene" style="display: inline-block;"></div>
+	<div style="display: inline-block;">
+		Struct size: <input type="text">
+		XYZ Offset: <input type="text">
+		<br>
+		<textarea id="vertices" style="" placeholder="Paste vertices here..." spellcheck='false'></textarea><br>
+		<textarea id="triangles" style="" placeholder="Paste tri indeces here..." spellcheck='false'></textarea>
+	</div>
+</div>
+<script>
+
+var n64scene = new N64Scene("#scene");
+var domVertices = document.querySelector('#vertices');
+var domTriangles = document.querySelector('#triangles');
+
+domVertices.onchange = function(e)
+{
+	var vbuf = N64Scene.parseHexString(this.value);
+	
+	n64scene.reset();
+	n64scene.addVertexLineMesh(vbuf, 6);
+}
+
+domTriangles.onchange = function(e)
+{
+	var vbuf = new DataView(N64Scene.parseHexString(domVertices.value));
+	var pbuf = new DataView(N64Scene.parseHexString(this.value))
+	
+	var geom = new THREE.Geometry();
+	
+	for(var i = 0; i < vbuf.byteLength; i += 6)
+	{
+		var x = vbuf.getInt16(i + 0);
+		var y = vbuf.getInt16(i + 2);
+		var z = vbuf.getInt16(i + 4);
+	
+		var pos = new THREE.Vector3(x, y, z);
+	
+		geom.vertices.push(pos);
+	}
+	
+	for(var i = 0; i < pbuf.byteLength; i += 20)
+	{
+		var v0 = pbuf.getUint16(i + 0);
+		var v1 = pbuf.getUint16(i + 2);
+		var v2 = pbuf.getUint16(i + 4);
+		var face = new THREE.Face3(v0, v1, v2);
+		
+		geom.faces.push(face);
+		console.log(v0, v1, v2)
+	}
+	
+	var pointMaterial = new THREE.PointsMaterial({ size: 15, sizeAttenuation: true, color: 0xffff00, opacity: 0.75, transparent: true });
+	var meshMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(255,255,255), wireframe: true});
+	
+	var mesh = new THREE.Mesh(geom, meshMaterial);
+	var dots = new THREE.Points(geom, pointMaterial);
+	
+	n64scene.reset();
+	
+	n64scene.scene.add(dots);
+	n64scene.scene.add(mesh);
+	
+	console.log('ay');
+}
+
+n64scene.startAnimation();
+
+</script>
+</body>

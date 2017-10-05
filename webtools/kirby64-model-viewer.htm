@@ -1,0 +1,283 @@
+<html>
+<head>
+	<title>Kirby64 Model Viewer</title>
+	<script src="js/bininput.js"></script>
+	<script src="js/three.min.js"></script>
+	<script src="js/n64scene.js"></script>
+	<script src="js/F3DEX2.js"></script>
+<style>
+#level-select {
+	display: inline-block;
+	vertical-align: top;
+	font-size: 11px;
+	font-weight: bold;
+	font-family: consolas;
+	height: 480px;
+	width: 400px;
+	overflow: auto;
+	border: 1px solid #000;
+	background-color: #000;
+}
+
+#level-select div:hover {
+	background-color: #022;
+	cursor: default;
+}
+</style>
+</head>
+<body>
+
+<input id="romfile" type="file">
+<br>
+<div>
+<div id="scene" style="display: inline-block; vertical-align: top;"></div>
+<div id="level-select" style=""></div>
+
+<script>
+
+var domLevelSelect = document.querySelector('#level-select');
+
+// Addresses of address lists for geometry blocks 
+var geo_lists = {
+	0: 0x0006C8F0,
+	1: 0x0006CA44,
+	2: 0x0006FA94,
+	3: 0x00071300,
+	4: null,
+	5: null,
+	6: null,
+	7: 0x00076490 // levels
+}
+
+var n64scene = new N64Scene("#scene");
+n64scene.ucSetClass(F3DEX2);
+n64scene.ucSetVerbose(true);
+n64scene.startAnimation();
+
+BinInput.attach('#romfile', function(rom){
+	n64scene.setRom(rom);
+	
+	for(var j in geo_lists)
+	{
+		if(geo_lists[j] == null)
+		{
+			continue;
+		}
+		
+		for(var i = 1;; i++)
+		{
+			var addr = geo_lists[j] + (i * 8);
+			
+			var start = n64scene.rom_dv.getUint32(addr);
+			var end = n64scene.rom_dv.getUint32(addr + 4);
+			
+			if(start == 0)
+			{
+				break;
+			}
+			
+			var mode = n64scene.rom_dv.getUint32(start + 0x08);
+			
+			var modeColors = {
+				0x14: "#900",
+				0x17: "#990",
+				0x18: "#090",
+				0x1B: "#909",
+				0x1C: "#099"
+			}
+			
+			var color = (mode in modeColors) ? modeColors[mode] : "#FFF";
+			
+			var addr_scroll_settings = n64scene.rom_dv.getUint32(start + 0x04);
+			var scroll_str = (addr_scroll_settings?(", Scroll " + addr_scroll_settings.toString(16)):"")
+			
+			var domLink = document.createElement('div');
+			domLink.listno = j;
+			domLink.index = i;
+			
+			var listno_s = (j<16?"0":"") + j.toString(16);
+			var index_s = (i<16?"0":"") + i.toString(16)
+			var start_s = start.toString(16);
+			var end_s = end.toString(16);
+			var mode_s = mode.toString(16);
+			
+			domLink.innerHTML = listno_s + '[' + index_s + ']' + " " + start_s + " " + end_s + " (Mode " + mode_s + scroll_str + ")";
+			domLink.style.color = color;
+			domLink.href = "#"
+			
+			domLink.onclick = function(e){
+				console.log(e.target.listno, e.target.index)
+				loadLevel(e.target.listno, e.target.index);
+			}
+			
+			domLevelSelect.appendChild(domLink);
+		}
+	}
+	loadLevel(7, 1);
+});
+
+/*
+
+broken levels
+140b820
+
+14fe430
+15c4860
+15e9e00
+176d5a0
+18e7f70
+191ce80
+*/
+
+// Matrix rendering for modes 0x17, 0x18, 0x1B, 0x1C
+function renderMatrixMeshes(addr_layout, rendering_mode)
+{
+	var addr_matrices = addr_layout;
+
+	var g_x_translation, g_y_translation, g_z_translation,
+	    g_x_rotation, g_y_rotation, g_z_rotation,
+	    g_x_scale, g_y_scale, g_z_scale;
+	
+	for(var i = addr_matrices;; i += 0x2C)
+	{
+		var command = n64scene.getU32(i + 0x00);
+		
+		if(n64scene.getU32(i) == 0x00000012)
+		{
+			// seems to be a break command
+			break;
+		}
+		
+		var addr_gfx = n64scene.getU32(i + 0x04);
+	
+		var x_translation = n64scene.getFloat(i + 0x08);
+		var y_translation = n64scene.getFloat(i + 0x0C);
+		var z_translation = n64scene.getFloat(i + 0x10);
+		var x_rotation    = n64scene.getFloat(i + 0x14);
+		var y_rotation    = n64scene.getFloat(i + 0x18);
+		var z_rotation    = n64scene.getFloat(i + 0x1C);
+		var x_scale       = n64scene.getFloat(i + 0x20);
+		var y_scale       = n64scene.getFloat(i + 0x24);
+		var z_scale       = n64scene.getFloat(i + 0x28);
+		
+		if(addr_gfx == 0)
+		{
+			// assume it's setting the global multipliers
+			g_x_translation = x_translation;
+			g_y_translation = y_translation;
+			g_z_translation = z_translation;
+			g_x_rotation    = x_rotation;
+			g_y_rotation    = y_rotation;
+			g_z_rotation    = z_rotation;
+			g_x_scale       = x_scale;
+			g_y_scale       = y_scale;
+			g_z_scale       = z_scale;
+			continue;
+		}
+		
+		console.log('Matrix 0x00: ' + command.toString(16))
+		
+		console.log("  trans("+x_translation+","+y_translation+","+z_translation+") " +
+		"rot("+x_rotation+","+y_translation+","+z_translation+") " +
+		"scale(" + x_scale + "," + y_scale + "," + z_scale+ ")")
+		
+		if(rendering_mode == 0x17) // direct rendering
+		{
+			var addr_ucode_entrypoint = addr_gfx;
+			n64scene.ucExecute(addr_ucode_entrypoint);
+		}
+		else // assume grouped rendering (0x18, 0x1B, 0x1C)
+		{
+			var addr_group = addr_gfx;
+			
+			console.log(' Group list @ ' + addr_group.toString(16))
+			
+			for(var j = addr_group;; j += 0x08)
+			{
+				console.log("  Grouping cmd: " + n64scene.getU32(j).toString(16) + ", dlist: " + n64scene.getU32(j + 4).toString(16));
+				
+				if(n64scene.getU32(j) == 0x00000004)
+				{
+					break;
+				}
+				
+				var addr_ucode_entrypoint = n64scene.getU32(j + 4);
+				
+				n64scene.ucExecute(addr_ucode_entrypoint);
+			}
+		}
+
+		var mesh = n64scene.ucFlushMesh();
+		
+		mesh.scale.x = g_x_scale * x_scale;
+		mesh.scale.y = g_y_scale * y_scale;
+		mesh.scale.z = g_z_scale * z_scale;
+		
+		mesh.position.x = x_translation;
+		mesh.position.y = y_translation;
+		mesh.position.z = z_translation;
+		
+		mesh.rotation.x = x_rotation;
+		mesh.rotation.y = y_rotation;
+		mesh.rotation.z = z_rotation;
+		
+		n64scene.add(mesh);
+	}
+}
+
+// Rendering mode 0x14
+function renderMeshes(addr_layout)
+{
+	for(var i = addr_layout;; i += 4)
+	{
+		var addr_ucode_entrypoint = n64scene.getU32(i);
+		
+		console.log("entry point " + addr_ucode_entrypoint.toString(16));
+		
+		if(addr_ucode_entrypoint == 0x00000001)
+		{
+			continue;
+		}
+		
+		if(addr_ucode_entrypoint == 0x00000004)
+		{
+			break;
+		}
+		
+		n64scene.ucExecute(addr_ucode_entrypoint);
+		var mesh = n64scene.ucFlushMesh();
+		n64scene.add(mesh);
+	}
+}
+
+function loadLevel(listno, index)
+{
+	n64scene.reset();
+	
+	var addr_list = geo_lists[listno];
+	var offset = index * 0x08;
+	
+	var start = n64scene.rom_dv.getUint32(addr_list + offset);
+	var end = n64scene.rom_dv.getUint32(addr_list + offset + 4);
+	
+	n64scene.loadSegment(4, start, end);
+	
+	var addr_layout = n64scene.getU32(0x04000000);
+	var rendering_mode = n64scene.getU32(0x04000008);
+	
+	console.log("Layout @ " + addr_layout.toString(16))
+	
+	var mesh;
+
+	if(rendering_mode == 0x14)
+	{
+		renderMeshes(addr_layout);
+	}
+	else
+	{
+		renderMatrixMeshes(addr_layout, rendering_mode);
+	}
+}
+
+</script>
+</body>

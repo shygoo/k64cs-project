@@ -1,0 +1,337 @@
+Kirby 64: The Crystal Shards
+ROM hacking doc
+shygoo 2017
+_______________
+
+     ROM      RAM      Description
+CODE -------- 80034240 DMA subroutine
+     -------- 800A8BAC img_id_to_virtual (A0 = img_id_pair)
+DATA -------- 800DF4D0 Holds pointer to segment 04
+     -------- 800EC9F8 EEPROM Mirror A
+	 -------- 800ECBB0 EEPROM Mirror B
+CODE -------- 800FC9C0 spawn_entity (A0 = ??, A1 = struct entity*, A2 = ??)
+     00042D28 -------- "RSP Gfx ucode F3DEX fifo 2.04H Yoshitaka Yasumoto 1998 Nintendo"
+	 00076498 -------- Table of geometry block start/end ROM address pairs
+     00076B2C -------- "Bank 7" offset list
+	 00077CD4 -------- Another offset list
+	 000783F4 -------- Main stage table
+	 007DFA70 803448C0 Kirby character vertex data 
+     -------- 80346A00 Kirby character microcode
+     -------- 80348240 Kirby texture
+     0128E770 80349F50 Stage 1-1 Area 0 geometry block
+	 01BD5C80 -------- "Bank 7"; contains images for level geometry
+	 01CE5A2A -------- Last resource in "Bank 7"
+     01D43468 802F4A10 State 1-1 Area 0 settings block (0x2058 bytes)
+___________________
+
+Main stage table
+
+ The table at 000783F4 (800D01A4) controls how each area of a stage is loaded.
+ For each stage there is an array of area structs. Each list is terminated with an empty struct.
+ 
+ Area structure
+ 
+  0x00: list_index geo_block_a  List-index of primary Geometry block
+  0x04: list_index geo_block_b  List-index of secondary Geometry block
+  0x08: u16        skybox_id    Skybox ID
+  0x0A: ??
+  0x0C: int        music_id     Music ID
+  0x10: bank_index level_block  Bank-index of Level settings block 
+  0x14: ??
+  0x16: ??                      (0009 plays cutscene and crashes)
+  0x18: bank_index dust_block   Bank-index of Dust particle settings
+  0x1C: bank_index dust_img     Bank-index of Dust particle image
+  0x20: char*      area_name    Pointer to dev ASCII level name
+  
+  See Resource addressing systems for details on bank_index and list_index.
+_________________
+
+Geometry block
+ 
+ When a level starts, the entire block is loaded into segment 04.
+ A table exists at 00076498 with the start and end addresses of each block.
+ 
+ There are multiple lists in ROM that consist of start-end address pairs of the geometry blocks:
+ 
+ Block structure
+   
+   1. Header
+   2. Vertices
+   3. Microcode
+   4. G_SETTIMG references
+   5. G_VTX references
+   6. Entry point groups (Optional)
+   7. Layout
+   8. Texture scroll settings (Optional)
+   9. Unknown2 (Optional)
+   
+ 1. Header
+   
+   The header is 32 bytes in size and references assets within the block.
+   On load, all segptrs in the header are converted to virtual addresses in-place.
+   
+   0x00: segptr layout           Points to the Layout section
+   0x04: segptr tex_scroll       Points to the Texture scroll section (Optional)
+   0x08: int    rendering_mode   Determines how the Layout section is interpreted
+   0x0C: segptr img_refs         Points to the G_SETTIMG reference list
+   0x10: segptr vtx_refs         Points to the G_VTX reference list
+   0x14: bool   n_unknown2       Number of entries in the Unknown2 section
+   0x18: segptr unknown2         Points the the Unknown2 section (Optional)
+   0x1C: int    ??
+   
+   b_have_unknown2 checked by code @ 800A9424, 800F6F3C, 800F7110
+   0x1C *4|1, passed to 0x800A8358
+   unknown2 last 12 bytes of the file? (optional field?)
+   rendering_mode is index of the subroutine table at 0x800D4F10, called every frame
+   
+ 2. Vertices
+   
+   16 bytes each, stored buffer-ready:
+   
+   0x00: s16 Vx
+   0x02: s16 Vy
+   0x04: s16 Vz
+   0x06: u16 unused
+   0x08: s16 U
+   0x0A: s16 V
+   0x0C: u8  R
+   0x0D: u8  G
+   0x0E: u8  B
+   0x0F: u8  A
+   
+ 3. Microcode
+  
+   All G_SETTIMG addresses for level geometry are stored as bank-indeces.
+   On load, each bank-index is converted to a virtual address in-place.
+   [When reading the addresses, if the resource is not in memory, the game loads it?]
+   All G_VTX addresses are segptrs referencing vertices within the block.
+   
+   If texture scroll settings are used, there will be jumps to segment 0x0E (See 8. Texture scroll settings).
+   
+ 4. G_SETTIMG reference list
+  
+   Zero-terminated list of segptrs, all pointing to microcode beginning with G_SETTIMG (0xFD) commands.
+   [Used to fill in the virtual addresses?]
+   
+   If there are no images, there will still be a pointer in the header, but
+   the list will just consist of a single 0x00000000.
+   
+ 5. G_VTX reference list
+  
+   Zero-terminated list of segptrs, all pointing to microcode beginning with G_VTX (0x01) commands.
+   
+ 6. Entry point groups (Optional section for rendering modes 0x18, ....)
+ 
+   Groups display lists together with lists of segptrs to their entry points.
+   Each struct is 8 bytes in size:
+   
+   0x00: int    command
+   0x04: segptr entry_point
+   
+   The command field seems to be:
+   00000000: Start group
+   00000001: Continue group
+   00000004: End group (entry_point will be NULL)
+      
+ 7. Layout
+   
+   The interpretation of this section depends on the rendering mode defined in the header.
+   
+   The following modes are used for the stages and characters:
+   
+    0x13: ?
+    0x14: List of entry points?
+    0x17: List of entry points with matrices
+    0x18: List of groups with matrices
+    0x1B: ? only on dev level
+    0x1C: ? only on dev level
+    
+	Mode 0x14:
+	
+	 Zero-terminated list of segptrs to microcode entry points.
+	 All elements will be placed without changes to position, rotation, or scaling.
+    
+    Mode 0x17:                  |  Mode 0x18:
+                                |   
+     0x00: int    command?      |   0x00: int    command?
+     0x04: segptr entry_point   |   0x04: segptr group
+     0x08: float  x_translation |   0x08: float  x_translation
+     0x0C: float  y_translation |   0x0C: float  y_translation
+     0x10: float  z_translation |   0x10: float  z_translation
+     0x14: float  x_rotation    |   0x14: float  x_rotation
+     0x18: float  y_rotation    |   0x18: float  y_rotation
+     0x1C: float  z_rotation    |   0x1C: float  z_rotation
+     0x20: float  x_scale       |   0x20: float  x_scale
+     0x24: float  y_scale       |   0x24: float  y_scale
+     0x28: float  z_scale       |   0x28: float  z_scale
+	
+	It seems if entry_point_list is NULL, the settings are multipliers for following matrices.
+	For mode 0x17 and 0x18, command 0x12 seems to terminate the list.
+    (Seen command values = 00000000 (always first), 00000001, 00000002, 00000012, 00060000)
+ 
+ 8. Texture scroll settings (Optional section)
+   
+   Inserts G_DL branches and dynamic G_SETTILESIZE commands into segment 0x0E for texture scrolling.
+   
+   Structure
+   
+   1. Header 0x20 (32) bytes
+   2. Big structs 0x78 (120) bytes each
+   3. List A?
+   4. List B?
+   
+   The header and lists are followed by 0x99999999, maybe an end-marker
+   
+   1. Header
+    ....?
+    0x0C: segptr to segptr list A
+    0x10: segptr to segptr list B
+    ....?
+	
+   2. Big structs
+   
+   3/4. List A/B
+   
+    Zero-terminated list of segptrs, all pointing to Big structs
+
+ 9. Unknown2 (Optional section)
+   
+   One or more bank-index pairs? Count is determined by the header's n_unknown2 field.
+___________________
+
+Level settings block
+
+ The level settings block controls the camera, collisions, 
+
+ Basic structure
+ 
+   1. Header
+   2. Unknown1
+   3. Unknown2
+   3. Secondary header?
+   4. Entity List
+ 
+ 1. Header
+ 
+   0x00: u32 Offset to unknown 2
+   0x04: u32 Offset of secondary header (collisions/camera)
+   0x08: u32 Offset of Entity list
+   
+   When the entity block is loaded, the offsets are converted to virtual addresses in-place.
+ 
+ 4. Entity list
+  
+   Each entity struct is 0x2C (44) bytes in size and contains information
+   like type, position, and scale:
+  
+   0x00: u8 ?
+   0x01: u8 ?
+   0x02: u8 entity_id
+   0x04: u8 ?
+   0x05: u8 ?
+   0x06: u16 ?
+   ....: ?
+   0x20: float scale
+   0x24: x position
+   ....
+   
+   See kirby-entity-ids.txt for a list of entity IDs.
+   The subroutine at 800FC9C0 ("spawn_entity") is used to spawn individual entities when Kirby is within range.
+   There is a 4-byte end marker 0x99999999 at the end of the list.
+___________________
+
+Particle settings block
+
+ Determines how dust particles move around in a level.
+
+ Structure
+
+  1. Number of particles
+  2. Particle offset list
+  3. Particle settings
+
+  Variable-length structures?
+  (The floats seem to control the speed of the particles)
+___________________
+
+Resource addressing systems
+
+ A few different addressing systems are used to reference and load resources from ROM.
+
+ Bank-index addressing
+  [AA AA] [BB BB]
+   A = Bank number, selects bank ROM address
+   B = Index, selects bank offset
+   (Index+1 is used to calculate the size of the resource.)
+   
+  Misc banks
+   
+   (Level settings, particle images, ...)
+   The function at 800A9AA8 is used to load the resource and return its RAM address.
+   (800D0184 table of pointers to offset lists?)
+   
+   Bank  Address  Offsets
+   0000  004F3290 0006CA0C
+   0001  007BACA0 0006FA64
+   0002  00964660 000712D0
+   0003  00BD6DB0 000730C4
+   0007  01D28720 00077F30
+  
+  Image banks
+   
+   Bank-indeces for images are used for addresses for G_SETTIMG commands in display lists.
+   The function at 800A8BAC is used to load the resource and return its RAM address.
+   
+   Bank Address  Offsets
+   0000
+   0001 005B5360 0006D1E4
+   0002 00858740
+   0003 009D8CB0 000D9268
+   0005 011291B0 00074A0C
+   0007 01BD5C80 00076B28
+   
+ List-index addressing (geometry blocks only?)
+  [AA AA] [BB BB]
+   A = List number, selects the list
+   B = Index, selects the ROM start-end address pair from the list
+  
+  Geometry block list
+   
+   There are multiple lists of ROM start-end address pairs for geometry blocks.
+   The function at 800A9864 is used to load the resource and return its RAM address.
+   
+   List Addresses Description
+   0000 0006C8F0
+   0001 0006CA44
+   0002 0006FA94
+   0003 00071300
+   ....
+   0007 00076490  Level geometry
+
+___________________
+
+EEPROM
+
+Structure
+ 
+ EEPROM is 0x118 bytes. Software mirrors of it are kept at 0x800EC9F8 and 0x800ECBB0 in RAM.
+ It consists of a header and three files.
+ Each section is ended with a checksum.
+ The checksum is generated by adding 0x97538642 to the sum of all words in a section. (Routine 0x800B8F34)
+ 
+ 0x00 Header
+ 0x10 File 1
+ 0x68 File 2
+ 0xC0 File 3
+ 
+ Header
+  Header is 0x10 bytes
+  Offset 0x0C checksum
+  
+ Files
+  Three files, 0x58 bytes each
+  File+0x18 u16 minigame jumping record
+    36.6 = 1310
+    32.84 = 988
+  File+0x54 is a checksum
+  Checksum is generated by adding the sum of all words in file to const 0x97538642 (Routine 0x800B8F34)

@@ -1,0 +1,123 @@
+Kirby 64 Entity IDs
+shygoo 2017
+ 
+For names:
+ http://strategywiki.org/wiki/Kirby_64:_The_Crystal_Shards/Enemies
+ http://kirby.wikia.com/wiki/Enemy_Info_Card
+
+
+ 00 00 N-Z
+ 00 01 Rocky
+ 00 02 Bronto Burt
+ 00 03 Skud
+ 00 04 Gordo
+ 00 05 Shotzo
+ 00 06 Spark-i
+ 00 07 Bouncy
+ 00 08 Glunk
+ 00 09 [?? explodes]
+ 00 0A Chilly
+ 00 0B Propeller
+ 00 0C Glom
+ 00 0D Mahall
+ 00 0E Poppy Bros. Jr.
+ 00 0F Bivolt
+ 00 10 Splinter
+ 00 11 Gobblin
+ 00 12 Kany
+ 00 13 Bivolt again?
+ 00 14 Sirkibble
+ 00 15 Gabon
+ 00 16 Mariel
+ 00 17 Large I3
+ 00 18 Snipper
+ 00 19 [?? explodes again?]
+ 00 1A Bonehead
+ 00 1B Squibbly
+ 00 1C Bobo
+ 00 1D Bo
+ 00 1E Punc
+ 00 1F Mite
+ 00 20 Sandman
+ 00 21 Flopper
+ 00 22 Kapar
+ 00 23 Maw
+ 00 24 Drop
+ 00 25 Pedo
+ 00 26 Noo
+ 00 27 Tick
+ 00 28 Cairn
+ 00 29 [?? invisible]
+ 00 2A Pompey
+ 00 2B Hack
+ 00 2C Burnis
+ 00 2D Fishbone
+ 00 2E Frigis
+ 00 2F Sawyer
+ 00 30 Turbite
+ 00 31 Plugg
+ 00 32 Ghost knight
+ 00 33 Zoos
+ 00 34 Kakti
+ 00 35 Rockn
+ 00 36 Chacha
+ 00 37 Galbo
+ 00 38 Bumber
+ 00 39 Scarfy
+ 00 3A Nruff
+ 00 3B Emp
+ 00 3C Magoo
+ 00 3D Yariko
+ 00 3E invisible?
+ 00 3F Wall Shotzo
+ 00 40 Keke
+ 00 41 Sparky
+ 00 42 Ignus // falling rocks
+ 00 43 Flora
+ 00 44 Putt
+ 00 45 Pteran
+ 00 46 Mumbies
+ 00 47 Pupa
+ 00 48 Mopoo
+ 00 49 Zebon
+ 00 4A [invisible?]
+ 00 4B [falling rocks sometimes blue]
+ 00 4C [falling rocks sometimes blue bigger?]
+
+ 01 00 Waddle Dee Boss
+ 01 01 Ado Boss
+ 01 02 DeeDeeDee Boss
+ 
+ 02 00 Whispy Woods
+ 02 01 Waddle Dee (Boss)
+ 
+ 03 00 Maxim Tomato
+ 03 01 Sandwich
+ 03 02 Cake
+ 03 03 Steak
+ 03 04 Ice Cream Bar
+ 03 05 Invinsible Candy
+ 03 06 Yellow Star
+ 03 07 Blue Star
+ 03 08 [crashes]
+ 03 09 1up
+ 03 0A [crashes] // used in picnic area
+ 03 0B Flower
+ 03 0C School of fish
+ 03 0D Butterfly
+ 
+ 05 // warps
+ 
+ 07 01 Ado (Gives maxim tomato)
+
+ 08 00 N-Z Boss
+ 08 01 Bouncy Boss
+ 08 02 Kakti Boss
+ 08 03 ?
+ 08 04 Spark-i Boss
+ 08 05 Tick Boss
+ 08 06 Kany Boss
+ 08 07 Kapar Boss
+ 08 08 Blowfish boss
+ 08 09 Galbo boss
+ 08 0A drop boss?

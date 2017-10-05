@@ -1,0 +1,310 @@
+<style>
+textarea{height: 700px;width:300px;}
+</style>
+
+<div>Terrible Collada DAE to Kirby64 geometry block converter</div>
+<div>(Textures ignored, geo block mode 0x14 only)</div>
+<textarea id="input" placeholder="Paste DAE XML text here..." spellcheck="false" style="white-space:nowrap;width:600px;"></textarea>
+<textarea id="output" placeholder="(Output hex data)" spellcheck="false"></textarea>
+
+<script>
+
+// xml dom parser
+var parser = new DOMParser();
+
+var domInput = document.querySelector('#input');
+var domOutput = document.querySelector('#output');
+
+var output = "";
+
+function print(s)
+{
+	output += s + "\n";
+	domOutput.value = output;
+}
+
+function printBytes(dv)
+{
+	var u8 = new Uint8Array(dv.buffer);
+	var s = "";
+	for(var i = 0; i < u8.byteLength; i += 16)
+	{
+		for(var j = 0; j < 16; j++)
+		{
+			var h = u8[i + j].toString(16);
+			if(h.length<2)h="0"+h;
+			s += h + ((j+1)%4==0?" ":"");
+		}
+		s += "\n"
+	}
+	print(s)
+}
+
+function hex(n, l)
+{
+	var r = n.toString(16);
+	while(r.length < l) r = "0" + r;
+	return r;
+}
+
+domInput.onkeyup = function(e)
+{
+	output = "";
+
+	var doc = parser.parseFromString(this.value, "text/xml");
+	console.log(doc)
+	var geometries = doc.querySelectorAll('library_geometries geometry');
+	
+	var bHaveColors = false;
+	var colors = [];
+	
+	// todo fix me
+	var domColors = doc.querySelector("#DrawCall_0061-mesh-colors-Col-array");
+	
+	if(domColors)
+	{
+		var color_list = domColors.textContent.split(' ').map(f => parseFloat(f));
+		bHaveColors = true;
+		console.log(color_list)
+		
+		for(var i = 0; i < color_list.length; i += 3)
+		{
+			var color = 0x000000FF;
+			var r = (color_list[i + 0] * 0xFF) | 0;
+			var g = (color_list[i + 1] * 0xFF) | 0;
+			var b = (color_list[i + 2] * 0xFF) | 0;
+			color |= (r << 24) | (g << 16) | (b << 8);
+			colors.push(color);
+		}
+	}
+	
+	for(var g = 0; g < geometries.length; g++)
+	{
+		var mesh = geometries[g].getElementsByTagName('mesh')[0];
+		var polylist = mesh.getElementsByTagName('polylist')[0];
+		var vertices = mesh.getElementsByTagName('vertices')[0];
+		
+		// Number of attributes
+		var input_count = polylist.querySelectorAll('input').length;
+		
+		var vertexSourceId = vertices.querySelector('input[semantic=POSITION]').getAttribute('source');
+		var vertexSource = doc.querySelector(vertexSourceId);
+		
+		var v = vertexSource.querySelector('float_array').textContent.split(' ');
+		var p = polylist.querySelector('p').textContent.split(' ');
+		
+		var faces = [];
+		var verts = [];
+		
+		for(var i = 0; i < v.length; i += 3)
+		{
+			var x = parseFloat(v[i + 0]);
+			var y = parseFloat(v[i + 1]);
+			var z = parseFloat(v[i + 2]);
+
+			verts.push([x, y, z]);
+		}
+		
+		for(var i = 0; i < p.length; i += 4)
+		{
+			var v_index = p[i + 0] | 0; // vert index
+			var c_index = p[i + 3] | 0; // color index
+			
+			// Set vertex color
+			verts[v_index][3] = bHaveColors ? colors[c_index] : 0;
+			
+			faces.push(v_index);
+		}
+		convert(verts, faces);
+	}
+}
+
+// read vertex array and write fast3d vertices to output dataview
+function convertVertices(verts, dv)
+{
+	var scale = 10.0;
+	var verticesOffset = 0x20;
+	
+	for(var i = 0; i < verts.length; i++)
+	{
+		var offset = verticesOffset + i*16;
+		dv.setInt16(offset + 0x00, (verts[i][0] * scale)); // x
+		dv.setInt16(offset + 0x02, (verts[i][1] * scale)); // y
+		dv.setInt16(offset + 0x04, (verts[i][2] * scale)); // z
+		
+		dv.setUint32(offset + 0x0C, verts[i][3]); // rgba
+	}
+}
+
+// unfinished
+function convertFaces(face_v_indeces, ucode, g_vtxList, offset)
+{
+	// preparing G_VTX command for multiple verts/faces
+	// scroll through vertex indeces, stop when vertex pos (max - min >= 32)
+	// if it cuts off mid-face, add additional G_VTX(s)
+	
+	var v_indeces_start = 0;
+	var n_v_indeces;
+	var v_index_min;
+	var v_index_max = 0;
+	
+	var v_index_mapping = []; // mapping indeces to vertex buffer
+	// push v_index, vbidx, nverts 
+	
+	// determine G_VTX address and number of vertices
+	for(var i = v_indeces_start;; i++)
+	{
+		var vmin, vmax;
+	
+		if(v_index_min == undefined)
+		{
+			vmin = face_v_indeces[i];
+		}
+		
+		if(faces_v_indeces[i] > v_index_max)
+		{
+			vmax = faces_v_indeces[i];
+		}
+	
+		if(vmax - vmin >= 32)
+		{
+			// next would exceed buffer size
+			v_indeces_start = i;
+			break;
+		}
+		
+		v_index_min = vmin;
+		v_index_max = vmax;
+	}
+	
+	var n_v_indeces = v_indeces_start + i;
+	
+}
+
+
+function convertFacesBad(faces, ucode, g_vtxList, offset)
+{
+	// inefficiently push three g_vtx and a g_tri1 for every face
+	// offset = offset of ucode for g_vtx/g_settimg ref lists
+	
+	var G_SHADE = 0b100;
+	
+	ucode.push(0xE7000000, 0x00000000); // pipesync
+	ucode.push(0xD9FDFFFE, 0x00000000); // geometrymode
+	ucode.push(0xFC30FE04, 0x5FFEFDF8); // setcombine
+	ucode.push(0xE200001C, 0x0C192078); // othermode lo
+	ucode.push(0xE3000A01, 0x00100000); // othermode hi
+	
+	//displayList.push(0xFB000000, 0x00AA00FF); // setenvcolor
+	
+	for(var i = 0; i < faces.length; i += 3)
+	{
+		var v0 = 0x04000020 + faces[i + 0] * 16;
+		var v1 = 0x04000020 + faces[i + 1] * 16;
+		var v2 = 0x04000020 + faces[i + 2] * 16;
+		
+		var cur = offset + ucode.length * 4;
+		g_vtxList.push(cur, cur + 8, cur + 16);
+		
+		ucode.push(0x01001002, v0); // vtx
+		ucode.push(0x01001004, v1); // vtx
+		ucode.push(0x01001006, v2); // vtx
+		ucode.push(0x05000204, 0x00000000); // tri1
+		ucode.push(0xE7000000, 0x00000000); // pipesync
+	}
+	
+	ucode.push(0xE200001C, 0x00552078); // othermode lo
+	ucode.push(0xE3000A01, 0x00000000); // othermode hi
+	
+	ucode.push(0xD9FFFFFF, 0x00220004); // geometrymode
+	ucode.push(0xFC30FE61, 0x55FEF379); // setcombine
+	ucode.push(0xDF000000, 0x00000000); // enddl
+}
+
+function convert(verts, faces)
+{
+	var header_length = 0x20;
+	var verts_length = (verts.length * 16);
+	var ucode_offset = header_length + verts_length;
+	var ucode_length;
+	
+	var dv_header_verts = new DataView(new ArrayBuffer(header_length + verts_length));
+	
+	convertVertices(verts, dv_header_verts);
+	
+	var ucode = [];
+	var g_vtx_list = [];
+	var refdata = []; // everything after ucode & g_vtx list
+	
+	var addr_ucode = 0x04000000 | ucode_offset;
+	
+	convertFacesBad(faces, ucode, g_vtx_list, addr_ucode);
+	ucode_length = (ucode.length * 4);
+	
+	var refdata_offset = (ucode_offset + ucode_length);
+	
+	var img_refs_offset = refdata_offset;
+	refdata.push(0x00000000); // end g_settimg list
+	
+	var vtx_refs_offset = refdata_offset + (refdata.length*4);
+	for(var i = 0; i < g_vtx_list.length; i++)
+	{
+		refdata.push(g_vtx_list[i])
+	}
+	refdata.push(0x00000000); // end g_vtx list
+	
+	var layout_offset = refdata_offset + (refdata.length*4);
+	
+	// Mode 0x14 layout (entry point list)
+	refdata.push(0x00000001);
+	refdata.push(addr_ucode);
+	refdata.push(0x00000004);
+	
+	var refdata_length = (refdata.length * 4);
+	
+	var addr_layout     = 0x04000000 | layout_offset;
+	var addr_tex_scroll = 0x00000000;
+	var rendering_mode  = 0x14;
+	var addr_img_refs   = 0x04000000 | img_refs_offset;
+	var addr_vtx_refs   = 0x04000000 | vtx_refs_offset;
+	var n_unknown2      = 0;
+	var addr_unknown2   = 0x00000000;
+	var unkval          = 0x03;
+	
+	dv_header_verts.setUint32(0x00, addr_layout);
+	dv_header_verts.setUint32(0x04, addr_tex_scroll);
+	dv_header_verts.setUint32(0x08, rendering_mode); // mode 0x14
+	dv_header_verts.setUint32(0x0C, addr_img_refs);
+	dv_header_verts.setUint32(0x10, addr_vtx_refs);
+	dv_header_verts.setUint32(0x14, n_unknown2);
+	dv_header_verts.setUint32(0x18, addr_unknown2);
+	dv_header_verts.setUint32(0x1C, unkval); // dunno
+	
+	var block_length = header_length + verts_length + ucode_length + refdata_length;
+	
+	var dv_block = new DataView(new ArrayBuffer((block_length | 0x0F) + 1));
+	
+	// copy header and vertices
+	for(var i = 0; i < dv_header_verts.byteLength; i += 4)
+	{
+		var v = dv_header_verts.getUint32(i);
+		dv_block.setUint32(i, v);
+	}
+	
+	// copy ucode
+	for(var i = 0; i < ucode.length; i++)
+	{
+		dv_block.setUint32(ucode_offset + i*4, ucode[i]);
+	}
+	
+	// copy refdata
+	for(var i = 0; i < refdata.length; i++)
+	{
+		dv_block.setUint32(refdata_offset + i*4, refdata[i])
+	}
+	
+	printBytes(dv_block);
+
+}
+
+</script>
