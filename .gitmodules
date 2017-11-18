@@ -1,0 +1,3 @@
+[submodule "plainhext"]
+	path = plainhext
+	url = http://github.com/shygoo/plainhext

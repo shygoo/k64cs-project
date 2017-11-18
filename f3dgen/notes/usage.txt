@@ -1,0 +1,20 @@
+f3dtool <input_path> [options]
+
+  -ucode         <ucode_class>
+                 Sets the microcode class
+                 Valid options: F3DEX2
+  
+  -o             <ucode_output_path>
+                 Outputs Fast3D microcode data
+          
+  -ov            <vertices_output_path>
+                 Outputs vertex data
+  
+  -o-vtx-rel     <vtx_relocations_output_path>
+                 Outputs list of offsets to every G_VTX command in the ucode
+  
+  -o-settimg-rel <settimg_relocations_ouput_path>
+                 Outputs list of offsets to every G_SETTIMG command in the ucode
+                 
+  -vertex-base  <vertex_base_address>
+                 Sets the base address that G_VTX will use for vertices

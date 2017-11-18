@@ -1,0 +1,8 @@
+For geoblock replacement testing
+
+Stage table @ 000783F4
+write geoblock id 00070002 in 000783F8 to render secondary model
+
+00070001 -> 0128E770
+00070002 -> 012B4420 (replace geo block here)
+

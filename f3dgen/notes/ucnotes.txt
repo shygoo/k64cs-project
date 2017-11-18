@@ -1,0 +1,53 @@
+ucode anatomy in kirby
+
+-------------------------------------------
+// start of dlist
+
+pipesync? 
+geometrymode
+culldl
+...
+
+-------------------------------------------
+
+// material selection
+
+geometrymode //optional  
+combine
+blendcolor   // optional
+primcolor    // optional
+envcolor     // optional
+settile
+texture      // optional
+settilesize
+settimg
+loadsync
+loadblock
+pipesync
+settile
+othermode_l  // optional
+othermode_h  // optional
+
+-------------------------------------------
+
+// vertex loading/triangle drawing
+
+vtx(s)        
+tri2/1(s)
+pipesync
+...
+
+-------------------------------------------
+
+// end of dlist
+
+pipesync  
+geometrymode
+othermodes
+enddl
+
+-------------------------------------------
+
+
+tilesync sometimes comes before consecutive settiles?
+
