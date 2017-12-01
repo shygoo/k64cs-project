@@ -172,7 +172,23 @@ var F3DEX2 = {
 	},
 	g_setenvcolor: function(ucp)
 	{
-		ucp.log('g_setenvcolor 0x' + ucp.cmd_b.toString(16));
+		var color = (ucp.cmd_b >>> 8).toString(16);
+		while(color.length!=6) color="0"+color;
+		ucp.log('g_setenvcolor 0x' + ucp.cmd_b.toString(16) + " %c  ", 'background-color: #' + color);
+		ucp.envcolor = ucp.cmd_b;
+	},
+	g_setblendcolor: function(ucp)
+	{
+		var color = (ucp.cmd_b >>> 8).toString(16);
+		while(color.length!=6) color="0"+color;
+		ucp.log('g_setblendcolor 0x' + ucp.cmd_b.toString(16) + " %c  ", 'background-color: #' + color);
+		ucp.envcolor = ucp.cmd_b;
+	},
+	g_setprimcolor: function(ucp)
+	{
+		var color = (ucp.cmd_b >>> 8).toString(16);
+		while(color.length!=6) color="0"+color;
+		ucp.log('g_setprimcolor 0x' + ucp.cmd_b.toString(16) + " %c  ", 'background-color: #' + color);
 		ucp.envcolor = ucp.cmd_b;
 	},
 	g_ucploadsync: function(ucp)
@@ -199,11 +215,51 @@ var F3DEX2 = {
 	{
 		ucp.log('g_loadblock [unimplemented]');
 	},
+	g_settile: function(ucp)
+	{
+		var fmt  = (ucp.cmd_a >>> 21) & 7
+		var siz  = (ucp.cmd_a >>> 19) & 3;
+		var line = (ucp.cmd_a >>> 9) & 0x1FF;
+		var tmem = (ucp.cmd_a & 0x1FF);
+		
+		var tile     = (ucp.cmd_b >>> 24) & 7;
+		var palette  = (ucp.cmd_b >>> 20) & 15;
+		var cmT      = (ucp.cmd_b >>> 18) & 3;
+		var maskT    = (ucp.cmd_b >>> 14) & 15;
+		var shiftT   = (ucp.cmd_b >>> 10) & 15;
+		var cmS      = (ucp.cmd_b >>>  8) & 3;
+		var maskS    = (ucp.cmd_b >>>  4) & 15;
+		var shiftS   = (ucp.cmd_b & 15);
+		
+		// 11110101 10 0100000000000000000000 00000111000000010100000001010000
+		// 11110101 10 0000000000010000000000 00000000000010010100001001010000
+		
+		fmt = F3DEX2.im_formats[fmt]
+		siz = F3DEX2.im_sizes[siz]
+		
+		var s2 = ucp.cmd_b.toString(2)
+		
+		while(s2.length!=32) s2="0"+s2;
+		
+		ucp.log('g_settile ' + fmt + " " + siz + " " + ucp.cmd_a.toString(2) + " " + s2)
+	},
 	g_settimg: function(ucp)
 	{
-		ucp.log('g_settimg [unimplemented]');
+		var fmt = (ucp.cmd_a >> 21) & 7;
+		var siz = (ucp.cmd_a >> 19) & 3;
+		fmt = F3DEX2.im_formats[fmt]
+		siz = F3DEX2.im_sizes[siz]
+		var width = (ucp.cmd_a & 0xFFF) + 1;
+		ucp.log('g_settimg ' + fmt + ' ' + siz + ' ' + 'w:' +  width + ' ' + ucp.cmd_b.toString(16));
+	},
+	g_setcombine: function(ucp)
+	{
+		ucp.log('g_setcombine ' + ucp.cmd_a.toString(16) + " " + ucp.cmd_b.toString(16));
 	}
 }
+
+F3DEX2.im_formats = ['G_IM_FMT_RGBA', 'G_IM_FMT_YUV', 'G_IM_FMT_CI', 'G_IM_FMT_IA', 'G_IM_FMT_I'];
+F3DEX2.im_sizes = ['G_IM_SIZ_4b', 'G_IM_SIZ_8b', 'G_IM_SIZ_16b', 'G_IM_SIZ_32b'];
 
 F3DEX2.g_quad = F3DEX2.g_tri2;
 
@@ -224,6 +280,10 @@ F3DEX2._class = {
 	0xF1: F3DEX2.g_rdphalf_2,
 	0xF2: F3DEX2.g_settilesize,
 	0xF3: F3DEX2.g_loadblock,
+	0xF5: F3DEX2.g_settile,
+	0xF9: F3DEX2.g_setblendcolor,
+	0xFA: F3DEX2.g_setprimcolor,
+	0xFB: F3DEX2.g_setenvcolor,
+	0xFC: F3DEX2.g_setcombine,
 	0xFD: F3DEX2.g_settimg,
-	0xFB: F3DEX2.g_setenvcolor
 };

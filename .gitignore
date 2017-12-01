@@ -1,0 +1,5 @@
+.vscode
+*.z64
+*.bak
+junk/
+tmp/

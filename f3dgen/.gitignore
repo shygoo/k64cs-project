@@ -1,1 +1,4 @@
 shrektest/
+*.z64
+test.asm
+test.bat

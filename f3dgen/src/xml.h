@@ -1,6 +1,8 @@
 #ifndef XML_H
 #define XML_H
 
+#include "vecdef.h"
+
 typedef struct
 {
 	const char* name;

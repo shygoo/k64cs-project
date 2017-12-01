@@ -31,6 +31,8 @@
 
 #include <stdlib.h>
 
+#include <stdio.h>
+
 #define VECTOR_TYPEDEF(base_type_t, vector_type_t, fn_prefix) \
 typedef struct \
 { \

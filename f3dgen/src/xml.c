@@ -346,6 +346,7 @@ void xml_node_delete_child_nodes(xml_node_t* node)
 	{
 		node->num_attrs = 0;
 		node->num_attr_slots = 0;
+
 		free(node->attributes);
 	}
 
@@ -361,6 +362,7 @@ void xml_node_delete_child_nodes(xml_node_t* node)
 
 	node->num_child_nodes = 0;
 	node->num_child_node_slots = 0;
+
 	free(node->child_nodes);
 }
 

@@ -215,7 +215,7 @@ int main(int argc, const char* argv[])
 	}
 	
 	gar_init(&gar, options.ucode);
-	gar_load_dae(&gar, options.input_path, options.vertex_base_address);
+	gar_load_dae(&gar, options.input_path, options.vertex_base_address, options.vertex_scale);
 
 	printf("%d dlists\n", gar.dlists.length);
 
@@ -230,7 +230,7 @@ int main(int argc, const char* argv[])
 
 	sprintf(path, "%s_vertices.bin", options.output_path);
 	printf("%s\n", path);
-	
+
 	vertex_list_bswap(&gar.vertices);
 	vertex_list_dump(&gar.vertices, path);
 

@@ -75,7 +75,7 @@ Geometry block
    0x08: int    rendering_mode   Determines how the Layout section is interpreted
    0x0C: segptr img_refs         Points to the G_SETTIMG reference list
    0x10: segptr vtx_refs         Points to the G_VTX reference list
-   0x14: bool   n_unknown2       Number of entries in the Unknown2 section
+   0x14: int    n_unknown2       Number of entries in the Unknown2 section
    0x18: segptr unknown2         Points the the Unknown2 section (Optional)
    0x1C: int    ??
    

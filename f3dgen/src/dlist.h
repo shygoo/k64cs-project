@@ -67,6 +67,8 @@ void dlist_dump(dlist_t* dlist, const char* path);
 
 int dlist_push_tri1(dlist_t* dlist, uint8_t v0, uint8_t v1, uint8_t v2);
 int dlist_push_tri2(dlist_t* dlist, uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v10, uint8_t v11, uint8_t v12);
+int dlist_push_tri4(dlist_t* dlist, uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v10, uint8_t v11, uint8_t v12,
+	uint8_t v20, uint8_t v21, uint8_t v22, uint8_t v30, uint8_t v31, uint8_t v32);
 int dlist_push_vtx(dlist_t* dlist, uint32_t vaddr, uint8_t numv, uint8_t vidx);
 int dlist_push_enddl(dlist_t* dlist);
 int dlist_push_tilesync(dlist_t* dlist);

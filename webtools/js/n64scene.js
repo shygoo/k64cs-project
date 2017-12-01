@@ -246,7 +246,7 @@ N64Scene.prototype = {
 			geometry.vertices.push(pos);
 		}
 		
-		var pointMaterial = new THREE.PointsMaterial({ size: 15, sizeAttenuation: true, color: 0xffff00, opacity: 0.75, transparent: true });
+		var pointMaterial = new THREE.PointsMaterial({ size: 5, sizeAttenuation: true, color: 0xffff00, opacity: 0.75, transparent: true });
 		var lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, opacity: 0.2, transparent: true, linewidth: 10 });
 		var line = new THREE.Line(geometry, lineMaterial);
 		var dots = new THREE.Points(geometry, pointMaterial);

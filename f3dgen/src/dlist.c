@@ -125,6 +125,35 @@ int dlist_push_tri2(dlist_t* dlist, uint8_t v0, uint8_t v1, uint8_t v2, uint8_t 
 	return -1;
 }
 
+int dlist_push_tri4(dlist_t* dlist, uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v10, uint8_t v11, uint8_t v12,
+	uint8_t v20, uint8_t v21, uint8_t v22, uint8_t v30, uint8_t v31, uint8_t v32)
+{
+	dlist_command_t command;
+
+	if(dlist->ucode == UCODE_F3DEX2)
+	{
+		command.a = 0x10000000;
+		command.b = 0x00000000;
+
+        command.b |= (v0 & 0xF) << 28; // v0
+        command.a |= (v1 & 0xF) << 12; // v1
+        command.b |= (v2 & 0xF) << 24; // v2
+        command.b |= (v10 & 0xF) << 20; // v10
+        command.a |= (v11 & 0xF) << 8;  // v11
+        command.b |= (v12 & 0xF) << 16; // v12
+        command.b |= (v20 & 0xF) << 12; // v20
+        command.a |= (v21 & 0xF) << 4; // v21
+        command.b |= (v22 & 0xF) << 8; // v22
+        command.b |= (v30 & 0xF) << 4; // v30
+        command.a |= (v31 & 0xF) << 0; // v31
+        command.b |= (v32 & 0xF) << 0; // v32
+
+		return dlist_push_command(dlist, command);
+	}
+
+	return -1;
+}
+
 int dlist_push_vtx(dlist_t* dlist, uint32_t vaddr, uint8_t numv, uint8_t vidx)
 {
 	dlist_command_t command;
